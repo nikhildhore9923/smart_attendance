@@ -1,201 +1,160 @@
-﻿# SmartAttend â€” AI-Based Smart Attendance System
+# SmartAttend — AI-Powered Smart Attendance ERP System
 
-**Megaproject | Group A18**
-**[👉 Click here for the full Startup Guide (RUNNING_THE_PROJECT.md)](RUNNING_THE_PROJECT.md)**
+[![React](https://img.shields.io/badge/Frontend-React_18_%2B_Vite-61DAFB?logo=react&logoColor=black)](frontend/)
+[![Node.js](https://img.shields.io/badge/Backend-Node.js_%2B_Express-339933?logo=nodedotjs&logoColor=white)](backend/)
+[![FastAPI](https://img.shields.io/badge/AI_Engine-FastAPI_%2B_Python-009688?logo=fastapi&logoColor=white)](ai-service/)
+[![Prisma](https://img.shields.io/badge/ORM-Prisma-2D3748?logo=prisma&logoColor=white)](backend/prisma/)
+[![Tailwind CSS](https://img.shields.io/badge/UI-Tailwind_CSS_v3-38B2AC?logo=tailwindcss&logoColor=white)](frontend/)
 
-A full-stack, production-grade attendance system using real-time face recognition, two-stage liveness detection, and a live React dashboard.
-
----
-
-## Architecture
-
-```
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚  React Frontend  (Vite + Tailwind + Recharts)               â”‚
-â”‚  â”œâ”€â”€ Dashboard       (live stats, charts, event feed)       â”‚
-â”‚  â”œâ”€â”€ Live Recognition (WebSocket + webcam stream)           â”‚
-â”‚  â”œâ”€â”€ Enroll Student  (WebSocket guided capture)             â”‚
-â”‚  â”œâ”€â”€ Students        (CRUD management)                      â”‚
-â”‚  â”œâ”€â”€ Reports         (analytics, defaulter list, export)    â”‚
-â”‚  â””â”€â”€ Attendance Log  (paginated searchable history)         â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-              â”‚  REST + WebSocket
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚  FastAPI Backend  (Python 3.10+)                            â”‚
-â”‚  â”œâ”€â”€ /api/auth        JWT login                             â”‚
-â”‚  â”œâ”€â”€ /api/students    CRUD                                  â”‚
-â”‚  â”œâ”€â”€ /api/attendance  Stats, summary, trend, export         â”‚
-â”‚  â”œâ”€â”€ /api/recognize/ws   Recognition WebSocket              â”‚
-â”‚  â”œâ”€â”€ /api/recognize/events  Live dashboard push             â”‚
-â”‚  â””â”€â”€ /api/enroll/ws   Enrollment WebSocket                  â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-              â”‚
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚  AI Pipeline                                                 â”‚
-â”‚  â”œâ”€â”€ OpenCV Haar cascade   â€” face detection                 â”‚
-â”‚  â”œâ”€â”€ dlib 68-pt landmarks  â€” EAR computation                â”‚
-â”‚  â”œâ”€â”€ LivenessChecker       â€” blink (EAR) + head-pose       â”‚
-â”‚  â””â”€â”€ DeepFace ArcFace      â€” face recognition               â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-              â”‚
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚  SQLite (attendance.db)                                      â”‚
-â”‚  â”œâ”€â”€ students              enrolled student profiles        â”‚
-â”‚  â”œâ”€â”€ attendance_records    time-stamped logs + confidence   â”‚
-â”‚  â”œâ”€â”€ faculty_users         JWT auth accounts                â”‚
-â”‚  â””â”€â”€ system_logs           audit trail                      â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-```
+**Enterprise-grade academic attendance management system combining real-time biometric facial recognition, multi-angle liveness detection, and academic ERP workflows.**
 
 ---
 
-## Quick Start
+## 📌 System Architecture
 
-### 1. Install Python dependencies
+SmartAttend is built on a high-throughput, decoupled microservice architecture:
 
-```bash
-pip install -r backend/requirements.txt
+```mermaid
+graph TD
+    subgraph Client ["Client Presentation Layer (Port 5173)"]
+        UI["React 18 SPA (Vite + Tailwind CSS)"]
+        UI_Sub1["Live Attendance Stream (Webcam + Realtime Feed)"]
+        UI_Sub2["Guided Biometric Enrollment (Multi-Angle + Quality Check)"]
+        UI_Sub3["Academic ERP & Department Analytics (Recharts)"]
+        UI_Sub4["Role-Based Access (Admin & Faculty Dashboards)"]
+    end
+
+    subgraph CoreBackend ["Core Business & ERP Backend (Port 5000)"]
+        NodeServer["Node.js + Express API Server"]
+        AuthMiddleware["JWT Authentication & RBAC Middleware"]
+        AcademicEngine["Academic Hierarchy (Programs, Semesters, Divisions, Subjects)"]
+        AttendanceEngine["Attendance Session Manager & Analytics"]
+        SocketIO["Socket.io Real-time Gateway"]
+        PrismaORM["Prisma ORM Client"]
+    end
+
+    subgraph AIEngine ["AI Biometric Microservice (Port 8000)"]
+        FastAPIServer["Python FastAPI Microservice"]
+        FaceDetector["Face Detection & Landmark Extraction"]
+        LivenessChecker["Passive/Active Anti-Spoofing (EAR + Head Pose)"]
+        EmbeddingEngine["DeepFace / ArcFace / FaceNet (512-d Vector Embeddings)"]
+        CosineMatcher["Vector Similarity Engine (Cosine Metric < 0.40)"]
+    end
+
+    subgraph Storage ["Persistence Layer"]
+        RelationalDB[("Relational Database\nUsers, Faculty, Students, Allocations,\nAttendanceSessions, AttendanceRecords")]
+        VectorStore[("Biometric Store\n512-d Face Embeddings")]
+    end
+
+    UI -->|REST API & JWT Auth| NodeServer
+    UI -->|Real-time Socket.io Events| SocketIO
+    UI -->|WebSocket Frame Stream| FastAPIServer
+    
+    NodeServer --> AuthMiddleware
+    AuthMiddleware --> AcademicEngine
+    AuthMiddleware --> AttendanceEngine
+    AttendanceEngine --> PrismaORM
+    
+    FastAPIServer --> FaceDetector
+    FaceDetector --> LivenessChecker
+    LivenessChecker --> EmbeddingEngine
+    EmbeddingEngine --> CosineMatcher
+    
+    CosineMatcher -.->|Verify Embeddings| VectorStore
+    PrismaORM --> RelationalDB
 ```
 
-### 2. Migrate existing data (if upgrading from old version)
+---
 
+## 🚀 Key Features & Capabilities
+
+### 1. 🤖 Deep Biometric Recognition & Anti-Spoofing
+* **512-Dimensional Deep Embeddings**: State-of-the-art face vector extraction yielding high identification accuracy and near-zero false-accept rate.
+* **Two-Tier Liveness Detection**:
+  * **Passive Blink Verification**: Eye Aspect Ratio (EAR) tracking to reject 2D photos, phone screen replays, and cutouts.
+  * **Head-Pose Challenge**: 3D yaw/pitch orientation verification to prevent static spoofing attacks.
+* **Multi-Angle Guided Enrollment**: Step-by-step guided capture (Straight, Left, Right, Tilt) with real-time blur and lighting validation.
+
+### 2. 🏛️ Complete Academic Hierarchy & Scoping
+* **Strict Division Scoping**: Classes, Semesters, Divisions (e.g., *B.Tech AIML - Div B*), and Subjects.
+* **Faculty Allocations**: Faculty members are allocated specific subjects and divisions, preventing unauthorized attendance manipulation.
+* **Scoped KPI Dashboards**: Student rosters, enrollment statuses (All, Done, Pending), and live attendance percentages dynamically adapt to selected division filters.
+
+### 3. 🎨 Modern Obsidian Glassmorphism UI
+* **Obsidian Midnight Dark & Crisp Slate Light Themes**: High-contrast, accessibility-tested color palettes.
+* **Custom Modal Architecture**: Replaced browser `alert()` and `confirm()` prompts with responsive, glassmorphic confirmation dialogs.
+* **User Profile Hub**: Faculty and Admins can view teaching allocations, assigned departments, security credentials, and biometric specs.
+
+---
+
+## 🛠️ Technology Stack
+
+| Layer | Technologies |
+|---|---|
+| **Frontend** | React 18, Vite, Tailwind CSS, Lucide Icons, Recharts, Axios, Socket.io-client |
+| **Backend API** | Node.js, Express, Prisma ORM, JSON Web Tokens (JWT), Bcrypt |
+| **AI / Computer Vision** | Python 3.10+, FastAPI, Uvicorn, OpenCV, MediaPipe, DeepFace, ArcFace / FaceNet, NumPy |
+| **Database** | Relational Database (PostgreSQL / MySQL / SQLite supported via Prisma) |
+
+---
+
+## ⚡ Quick Start & Startup Guide
+
+For detailed step-by-step setup instructions, please see the **[Startup Guide (RUNNING_THE_PROJECT.md)](RUNNING_THE_PROJECT.md)**.
+
+### Summary of Startup Commands:
+
+#### 1. AI Service (Python FastAPI)
 ```bash
-python backend/migrate_csv.py
+cd ai-service
+# Activate your virtual environment (if using one)
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
+> Running at: `http://localhost:8000` (Swagger docs: `http://localhost:8000/docs`)
 
-### 3. Start the backend
-
+#### 2. Core Backend (Node.js & Express)
 ```bash
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+cd backend
+npm install
+npx prisma db push
+node src/server.js
 ```
-> API docs available at http://localhost:8000/api/docs
+> Running at: `http://localhost:5000`
 
-### 4. Install and start the frontend
-
+#### 3. Frontend (React & Vite)
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-> Dashboard at http://localhost:5173
-
-### 5. Login
-
-Default credentials: `admin` / `admin123`
-*(Change immediately via Settings after first login)*
+> Web Dashboard at: `http://localhost:5173`
 
 ---
 
-## Usage
+## 🔐 Default Credentials
 
-### Enroll a Student
-1. Go to **Enroll Student** in the sidebar
-2. Enter name + roll number
-3. Webcam opens â€” auto-captures 8 photos with angle prompts
-4. Done â€” student is immediately available for recognition
+| Role | Email / Username | Password |
+|---|---|---|
+| **Admin** | `admin@college.edu` | `password123` |
+| **Faculty** | `faculty@college.edu` | `password123` |
 
-### Take Attendance
-1. Go to **Live Recognition**
-2. Click **Start**
-3. Student looks at camera â†’ blinks twice â†’ turns head
-4. System recognises and marks attendance instantly
-5. Dashboard **Live Feed** updates in real time
-
-### View Reports
-- **Dashboard**: today's stats, trend chart, live event feed
-- **Reports**: per-student attendance %, defaulters, date-range filters, CSV export
-- **Attendance Log**: full paginated history with search
+*(Credentials can be updated at any time in the Settings / Profile tab)*
 
 ---
 
-## Anti-Spoofing (Liveness Detection)
+## 📋 Academic Project & Viva Overview
 
-Two mandatory stages before recognition:
-
-| Stage | Method | Description |
-|-------|--------|-------------|
-| 1 | EAR Blink Detection | Eye Aspect Ratio via dlib 68-point facial landmarks. Detects genuine openâ†’closedâ†’open blink pattern. Threshold: EAR < 0.25 for â‰¥2 frames = closed. Requires 2 blinks. |
-| 2 | Head-Pose Challenge | Random left/right head-turn challenge. Yaw estimated from nose landmark offset. Must turn â‰¥15Â° within 10 seconds. |
-
-A printed photo or phone screen held to the camera will **not** pass liveness â€” no blink, no attendance.
-
----
-
-## Face Recognition Pipeline
-
-```
-Frame â†’ Haar Cascade â†’ Face ROI â†’ DeepFace.find()
-                                     â†“
-                               ArcFace embeddings
-                                     â†“
-                           Cosine distance < 0.45
-                                     â†“
-                              Student identity + confidence %
-```
-
-- Model: **ArcFace** (state-of-the-art, used in production identity systems)
-- Metric: Cosine distance (lower = more similar)
-- Threshold: 0.45 (tunable in `backend/config.py`)
-- Cooldown: 5 seconds per student (prevents double-marking)
+| Evaluation Component | Technical Implementation Details |
+|---|---|
+| **Face Detection** | OpenCV / MediaPipe face ROI isolation and bounding box regression |
+| **Anti-Spoofing & Liveness** | EAR (Eye Aspect Ratio) blink rate tracking + dynamic head pose yaw estimation |
+| **Face Recognition Engine** | DeepFace 512-dimensional vector embedding extraction + Cosine Similarity matching |
+| **Academic ERP Hierarchy** | Relational data model mapping Programs $\rightarrow$ Semesters $\rightarrow$ Divisions $\rightarrow$ Subjects $\rightarrow$ Faculty Allocations |
+| **Full Cascade Deletion** | Complete cascade cleanup of student accounts, biometric embeddings, and attendance history |
+| **Real-Time Synchronization** | WebSocket and Socket.io event pipes updating faculty monitors and dashboards with zero latency |
+| **Security & RBAC** | Stateless JWT authentication, role guards (ADMIN vs FACULTY), and bcrypt credential hashing |
 
 ---
 
-## Project Structure
-
-```
-smart_attendance/
-â”œâ”€â”€ backend/
-â”‚   â”œâ”€â”€ main.py                  FastAPI app entry point
-â”‚   â”œâ”€â”€ config.py                All tunable parameters
-â”‚   â”œâ”€â”€ requirements.txt
-â”‚   â”œâ”€â”€ migrate_csv.py           One-time CSV â†’ SQLite migration
-â”‚   â”œâ”€â”€ api/
-â”‚   â”‚   â”œâ”€â”€ auth.py              JWT login endpoints
-â”‚   â”‚   â”œâ”€â”€ students.py          Student CRUD
-â”‚   â”‚   â”œâ”€â”€ attendance.py        Analytics + export
-â”‚   â”‚   â”œâ”€â”€ recognition_ws.py    WebSocket recognition engine
-â”‚   â”‚   â””â”€â”€ enroll.py            WebSocket enrollment
-â”‚   â””â”€â”€ core/
-â”‚       â”œâ”€â”€ database.py          SQLAlchemy models + SQLite
-â”‚       â”œâ”€â”€ auth.py              JWT utilities
-â”‚       â”œâ”€â”€ liveness.py          EAR + head-pose liveness
-â”‚       â””â”€â”€ recognition.py       DeepFace wrapper
-â”œâ”€â”€ frontend/
-â”‚   â”œâ”€â”€ src/
-â”‚   â”‚   â”œâ”€â”€ pages/               React page components
-â”‚   â”‚   â”œâ”€â”€ components/          Shared UI components
-â”‚   â”‚   â”œâ”€â”€ context/             Auth state (React Context)
-â”‚   â”‚   â””â”€â”€ lib/api.js           Axios API client
-â”‚   â”œâ”€â”€ vite.config.js
-â”‚   â””â”€â”€ package.json
-â”œâ”€â”€ dataset/                     Face image store (auto-created)
-â””â”€â”€ README.md
-```
-
----
-
-## For the Viva Panel
-
-| Synopsis Module | Implementation |
-|----------------|---------------|
-| Face Detection | OpenCV Haar cascade (`haarcascade_frontalface_default.xml`) |
-| Liveness Detection | EAR blink (Soukupova & Cech, 2016) + head-pose challenge |
-| Face Recognition | DeepFace ArcFace model, cosine similarity |
-| Database Module | SQLite via SQLAlchemy ORM â€” students, records, users |
-| Report Generation | FastAPI `/api/attendance/export/csv` endpoint |
-| Analytics Dashboard | React SPA â€” live WebSocket feed, Recharts visualisations |
-| Anti-Spoofing | Two-stage: passive blink + active head-turn challenge |
-| Authentication | JWT tokens (HS256), bcrypt password hashing |
-| Real-time Updates | WebSocket push â€” marks appear on dashboard instantly |
-
----
-
-## Troubleshooting
-
-| Problem | Fix |
-|---------|-----|
-| "Camera error" in browser | Allow camera permission in browser settings |
-| DeepFace first run slow | Normal â€” downloads ArcFace weights (~137 MB) once |
-| Face not recognised | Re-enroll with better lighting; face must be enrolled first |
-| WebSocket disconnects | Ensure `uvicorn` is running on port 8000 |
-| `dlib` install fails | Run: `pip install cmake` first, then retry |
+## 📄 License
+This project is open-source under the [MIT License](LICENSE).
