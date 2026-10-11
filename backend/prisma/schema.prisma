@@ -1,0 +1,178 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  FACULTY
+  STUDENT
+}
+
+enum SessionStatus {
+  SCHEDULED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  MANUAL_PRESENT
+}
+
+model User {
+  id           String      @id @default(uuid())
+  email        String      @unique
+  passwordHash String
+  role         Role
+  firstName    String
+  lastName     String
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  
+  student      Student?
+  faculty      Faculty?
+  auditLogs    AuditLog[]
+}
+
+model Student {
+  id           String      @id
+  user         User        @relation(fields: [id], references: [id], onDelete: Cascade)
+  rollNumber   String      @unique
+  isEnrolled   Boolean     @default(false)
+  
+  classId      String?
+  class        Class?      @relation(fields: [classId], references: [id])
+  
+  embeddings   FaceEmbedding[]
+  attendances  AttendanceRecord[]
+}
+
+model Faculty {
+  id           String      @id
+  user         User        @relation(fields: [id], references: [id], onDelete: Cascade)
+  department   String
+  
+  sessions     AttendanceSession[]
+  subjects     Subject[]   @relation("FacultyToSubject")
+}
+
+model FaceEmbedding {
+  id           String      @id @default(uuid())
+  studentId    String
+  student      Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  embedding    Json        // Using JSON for storing float array in MySQL
+  qualityScore Float
+  modelName    String      @default("ArcFace")
+  dimension    Int         @default(512)
+  createdAt    DateTime    @default(now())
+}
+
+model Class {
+  id             String        @id @default(uuid())
+  name           String
+  semester       Int           // Legacy
+  isActive       Boolean       @default(true)
+  
+  semesterId     String?       // New hierarchical link
+  academicSem    Semester?     @relation(fields: [semesterId], references: [id])
+  
+  subjects       Subject[]     @relation("ClassToSubject")
+  students       Student[]
+}
+
+model Subject {
+  id             String        @id @default(uuid())
+  name           String
+  code           String        // Remove unique constraint to allow same code in diff semesters
+  isActive       Boolean       @default(true)
+  
+  classId        String?       // Legacy link
+  
+  semesterId     String?       // New hierarchical link
+  academicSem    Semester?     @relation(fields: [semesterId], references: [id])
+  
+  classes        Class[]       @relation("ClassToSubject")
+  faculties      Faculty[]     @relation("FacultyToSubject")
+  
+  sessions       AttendanceSession[]
+}
+
+model AttendanceSession {
+  id           String      @id @default(uuid())
+  facultyId    String
+  faculty      Faculty     @relation(fields: [facultyId], references: [id])
+  subjectId    String
+  subject      Subject     @relation(fields: [subjectId], references: [id])
+  date         DateTime
+  startTime    DateTime
+  endTime      DateTime?
+  status       SessionStatus @default(SCHEDULED)
+  
+  records      AttendanceRecord[]
+}
+
+model AttendanceRecord {
+  id              String      @id @default(uuid())
+  sessionId       String
+  session         AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  studentId       String
+  student         Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  status          AttendanceStatus
+  markedAt        DateTime    @default(now())
+  livenessScore   Float?
+  confidenceScore Float?
+
+  @@unique([sessionId, studentId]) // Prevents duplicate attendance per session
+}
+
+model AuditLog {
+  id           String      @id @default(uuid())
+  userId       String?
+  user         User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action       String
+  details      Json
+  timestamp    DateTime    @default(now())
+}
+
+
+
+model AcademicYear {
+  id             String      @id @default(uuid())
+  name           String      @unique // e.g. "2026-2027"
+  startDate      DateTime
+  endDate        DateTime
+  isActive       Boolean     @default(true)
+  
+  semesters      Semester[]
+}
+
+model Program {
+  id             String      @id @default(uuid())
+  name           String      @unique // e.g. "B.Tech CSE"
+  
+  semesters      Semester[]
+}
+
+model Semester {
+  id             String      @id @default(uuid())
+  number         Int
+  isActive       Boolean     @default(true)
+  
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  
+  programId      String
+  program        Program      @relation(fields: [programId], references: [id], onDelete: Cascade)
+  
+  classes        Class[]
+  subjects       Subject[]
+
+  @@unique([academicYearId, programId, number])
+}

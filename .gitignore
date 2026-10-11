@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+venv/
+ai-service/venv/
+__pycache__/
+ai-service/__pycache__/
+ai-service/app/__pycache__/
+*.py[cod]
+
+# Production Builds
+frontend/dist/
+dist/
+
+# Environment & Credentials
+.env
+backend/.env
+frontend/.env
+ai-service/.env
+
+# Logs
+*.log
+npm-debug.log*
+
+# Biometric Raw Captures
+dataset/
+
+# Editor & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
