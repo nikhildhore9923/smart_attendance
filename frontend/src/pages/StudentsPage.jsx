@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { 
   Users, Trash2, RotateCcw, Search, UserPlus, FileX, Edit, X, 
-  BarChart2, CheckCircle2, AlertTriangle, Filter, ArrowUpDown, ShieldAlert, Sparkles 
+  BarChart2, CheckCircle2, AlertTriangle, Filter, ArrowUpDown, ShieldAlert, Sparkles, BookOpen 
 } from 'lucide-react'
 import api, { getStudents, deleteStudent, deleteStudentRecords, activateStudent, getStudentReport } from '../lib/api'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useSubject } from '../context/SubjectContext'
 import { useConfirm } from '../context/ConfirmContext'
 import toast from 'react-hot-toast'
 
@@ -13,6 +14,7 @@ const COLORS = ['#10B981', '#3B82F6', '#8B5CF6', '#F59E0B', '#06B6D4', '#EC4899'
 
 export default function StudentsPage() {
   const { user } = useAuth()
+  const { subject, subjects } = useSubject()
   const { confirm } = useConfirm()
   const navigate  = useNavigate()
   const [students, setStudents] = useState([])
@@ -33,11 +35,15 @@ export default function StudentsPage() {
   const [studentReportData,        setStudentReportData]        = useState(null)
   const [loadingReport,            setLoadingReport]            = useState(false)
 
+  const activeSubjectObj = subjects.find(s => s.id === subject)
+
   const load = async () => {
     setLoading(true)
     try { 
+      const params = {}
+      if (subject) params.subjectId = subject
       const [studentsRes, classesRes] = await Promise.all([
-        getStudents(),
+        getStudents(params),
         api.get('/academic/classes').catch(() => ({ data: [] }))
       ])
       setStudents(studentsRes.data) 
@@ -49,7 +55,7 @@ export default function StudentsPage() {
 
   useEffect(() => { 
     load(); 
-  }, [])
+  }, [subject])
 
   const handleEditSubmit = async (e) => {
     e.preventDefault()
@@ -164,13 +170,12 @@ export default function StudentsPage() {
     return 0
   })
 
-  // Calculate unique divisions present in students or classes
-  const divisionsList = Array.from(new Set([
-    ...classes.map(c => c.name),
-    ...students.map(s => s.className).filter(Boolean)
-  ])).filter(Boolean)
+  // Calculate unique divisions present in current students dataset
+  const divisionsList = Array.from(new Set(
+    students.map(s => s.className).filter(Boolean)
+  )).sort()
 
-  const isPrivileged = user?.is_admin || user?.role === 'ADMIN' || user?.role === 'FACULTY'
+  const isAdmin = user?.is_admin || user?.role === 'ADMIN'
 
   // Students scoped to selected division
   const divisionScopedStudents = students.filter(s => {
@@ -183,14 +188,25 @@ export default function StudentsPage() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
         <div>
-          <h1 className="page-title">Student Management</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <h1 className="page-title">Student Management</h1>
+            {activeSubjectObj && (
+              <span className="badge badge-blue" style={{ fontSize: '12px', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                <BookOpen size={12} /> {activeSubjectObj.name} {activeSubjectObj.classes?.length > 0 ? `(${activeSubjectObj.classes.map(c=>c.name).join(', ')})` : ''}
+              </span>
+            )}
+          </div>
           <p className="page-desc">
-            Organized student registry with biometrics, division mappings, and subject-wise attendance tracking.
+            {activeSubjectObj 
+              ? `Viewing students for allocated course ${activeSubjectObj.name} • ${activeSubjectObj.classes?.map(c=>c.name).join(', ') || 'All Divisions'}`
+              : 'Organized student registry with biometrics, division mappings, and subject-wise attendance tracking.'}
           </p>
         </div>
-        <button className="btn btn-primary" onClick={() => navigate('/enroll?mode=create')}>
-          <UserPlus size={16}/> Enroll New Student
-        </button>
+        {isAdmin && (
+          <button className="btn btn-primary" onClick={() => navigate('/enroll?mode=create')}>
+            <UserPlus size={16}/> Enroll New Student
+          </button>
+        )}
       </div>
 
       {/* KPI Overview Cards (Scoped to Selected Division) */}
@@ -449,7 +465,7 @@ export default function StudentsPage() {
                           <BarChart2 size={16} />
                         </button>
 
-                        {isPrivileged && (
+                        {isAdmin && (
                           <>
                             <button 
                               className="btn-icon" 

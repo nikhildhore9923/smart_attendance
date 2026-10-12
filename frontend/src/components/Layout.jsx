@@ -23,7 +23,7 @@ const NAV = [
   
   { section: 'Students', roles: ['ADMIN', 'FACULTY'] },
   { to: '/students',  icon: Users,           label: 'All Students', roles: ['ADMIN', 'FACULTY'] },
-  { to: '/enroll',    icon: UserPlus,        label: 'Enroll Student', roles: ['ADMIN', 'FACULTY'] },
+  { to: '/enroll',    icon: UserPlus,        label: 'Enroll Student', roles: ['ADMIN'] },
   
   { section: 'Academics', roles: ['ADMIN'] },
   { to: '/classes',   icon: BookOpen,        label: 'Academic Setup', roles: ['ADMIN'] },

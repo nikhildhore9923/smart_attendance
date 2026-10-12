@@ -50,7 +50,7 @@ async function recognizeStudentFromImage(base64Image) {
 
   // 5. Fetch Enrollments
   const enrolledEmbeddings = await prisma.faceEmbedding.findMany({
-    include: { student: { include: { user: true } } }
+    include: { student: { include: { user: true, class: true } } }
   });
 
   if (enrolledEmbeddings.length === 0) {
@@ -72,7 +72,9 @@ async function recognizeStudentFromImage(base64Image) {
           rollNumber: record.student.rollNumber,
           firstName: record.student.user.firstName,
           lastName: record.student.user.lastName,
-          email: record.student.user.email
+          email: record.student.user.email,
+          classId: record.student.classId,
+          className: record.student.class?.name || null
         }
       });
     }
@@ -116,7 +118,7 @@ async function recognizeMultipleStudentsFromImage(base64Image) {
   if (analysis.status === 'NO_FACE' || analysis.num_faces === 0) return { error: 'No face detected in the image.' };
 
   const enrolledEmbeddings = await prisma.faceEmbedding.findMany({
-    include: { student: { include: { user: true } } }
+    include: { student: { include: { user: true, class: true } } }
   });
 
   if (enrolledEmbeddings.length === 0) {
@@ -143,7 +145,9 @@ async function recognizeMultipleStudentsFromImage(base64Image) {
           rollNumber: record.student.rollNumber,
           firstName: record.student.user?.firstName || '',
           lastName: record.student.user?.lastName || '',
-          email: record.student.user?.email || ''
+          email: record.student.user?.email || '',
+          classId: record.student.classId,
+          className: record.student.class?.name || null
         } };
       }
     }

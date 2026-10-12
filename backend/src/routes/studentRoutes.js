@@ -7,11 +7,11 @@ const router = express.Router();
 router.use(authenticate);
 
 router.get('/', authorize('ADMIN', 'FACULTY'), getStudents);
-router.post('/', authorize('ADMIN', 'FACULTY'), createStudent);
+router.post('/', authorize('ADMIN'), createStudent);
 router.get('/:id', authorize('ADMIN', 'FACULTY', 'STUDENT'), getStudentById);
-router.put('/:id', authorize('ADMIN', 'FACULTY'), updateStudent);
-router.delete('/:id', authorize('ADMIN', 'FACULTY'), deleteStudent);
-router.delete('/:id/records', authorize('ADMIN', 'FACULTY'), deleteStudentRecords);
-router.patch('/:id/activate', authorize('ADMIN', 'FACULTY'), activateStudent);
+router.put('/:id', authorize('ADMIN'), updateStudent);
+router.delete('/:id', authorize('ADMIN'), deleteStudent);
+router.delete('/:id/records', authorize('ADMIN'), deleteStudentRecords);
+router.patch('/:id/activate', authorize('ADMIN'), activateStudent);
 
 module.exports = router;

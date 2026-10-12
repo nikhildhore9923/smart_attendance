@@ -6,9 +6,9 @@ const router = express.Router();
 
 router.use(authenticate);
 
-// Only Admin and Faculty can manage enrollments
-router.post('/:studentId/start', authorize('ADMIN', 'FACULTY'), startEnrollment);
-router.post('/:studentId/samples', authorize('ADMIN', 'FACULTY'), addSample);
-router.get('/:studentId', authorize('ADMIN', 'FACULTY'), getEnrollment);
+// Only Admin can manage biometric enrollments
+router.post('/:studentId/start', authorize('ADMIN'), startEnrollment);
+router.post('/:studentId/samples', authorize('ADMIN'), addSample);
+router.get('/:studentId', authorize('ADMIN'), getEnrollment);
 
 module.exports = router;

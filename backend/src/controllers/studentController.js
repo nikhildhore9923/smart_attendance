@@ -4,7 +4,50 @@ const prisma = new PrismaClient();
 
 const getStudents = async (req, res) => {
   try {
+    const { subjectId } = req.query;
+    let classFilter = undefined;
+
+    if (req.user && req.user.role === 'FACULTY') {
+      const faculty = await prisma.faculty.findUnique({
+        where: { id: req.user.id },
+        include: {
+          subjects: {
+            include: { classes: true }
+          }
+        }
+      });
+
+      if (!faculty) {
+        return res.json([]);
+      }
+
+      if (subjectId && subjectId !== 'ALL') {
+        const targetSubject = faculty.subjects.find(s => s.id === subjectId);
+        if (targetSubject) {
+          const classIds = targetSubject.classes.map(c => c.id);
+          classFilter = { classId: { in: classIds } };
+        } else {
+          return res.json([]);
+        }
+      } else {
+        const facultyClassIds = [...new Set(faculty.subjects.flatMap(s => s.classes.map(c => c.id)))];
+        classFilter = { classId: { in: facultyClassIds } };
+      }
+    } else if (subjectId && subjectId !== 'ALL') {
+      const subject = await prisma.subject.findUnique({
+        where: { id: subjectId },
+        include: { classes: true }
+      });
+      if (subject) {
+        const classIds = subject.classes.map(c => c.id);
+        classFilter = { classId: { in: classIds } };
+      }
+    }
+
+    const where = classFilter ? classFilter : {};
+
     const students = await prisma.student.findMany({
+      where,
       include: {
         user: {
           select: { id: true, email: true, firstName: true, lastName: true, createdAt: true },
@@ -15,38 +58,50 @@ const getStudents = async (req, res) => {
           }
         },
         attendances: {
-          where: { status: { in: ['PRESENT', 'MANUAL_PRESENT'] } },
+          where: (subjectId && subjectId !== 'ALL')
+            ? { status: { in: ['PRESENT', 'MANUAL_PRESENT'] }, session: { subjectId } }
+            : { status: { in: ['PRESENT', 'MANUAL_PRESENT'] } },
         },
         _count: { select: { embeddings: true } }
       },
       orderBy: { rollNumber: 'asc' }
     });
 
-    // Preload total sessions per classId for speed
+    let subjectTotalSessions = 0;
+    if (subjectId && subjectId !== 'ALL') {
+      subjectTotalSessions = await prisma.attendanceSession.count({
+        where: { subjectId }
+      });
+    }
+
     const classIds = [...new Set(students.map(s => s.classId).filter(Boolean))];
     const sessionCountMap = {};
-    for (const cid of classIds) {
-      const count = await prisma.attendanceSession.count({
-        where: { subject: { classes: { some: { id: cid } } } }
-      });
-      sessionCountMap[cid] = count;
+    if (!subjectId || subjectId === 'ALL') {
+      for (const cid of classIds) {
+        const count = await prisma.attendanceSession.count({
+          where: { subject: { classes: { some: { id: cid } } } }
+        });
+        sessionCountMap[cid] = count;
+      }
     }
 
     const formatted = students.map(s => {
-      const totalSessions = sessionCountMap[s.classId] || 0;
+      const totalSessions = (subjectId && subjectId !== 'ALL')
+        ? subjectTotalSessions
+        : (sessionCountMap[s.classId] || 0);
       const presentCount = s.attendances?.length || 0;
       const percentage = totalSessions > 0 ? (presentCount / totalSessions) * 100 : 0;
 
       return {
-        ...s, // Keeps s.user, s.rollNumber, etc. for EnrollPage
-        roll_no: s.rollNumber, // For StudentsPage
-        name: `${s.user?.firstName || ''} ${s.user?.lastName || ''}`.trim(), // For StudentsPage
+        ...s,
+        roll_no: s.rollNumber,
+        name: `${s.user?.firstName || ''} ${s.user?.lastName || ''}`.trim(),
         firstName: s.user?.firstName || '',
         lastName: s.user?.lastName || '',
         email: s.user?.email || '',
-        photo_count: s._count?.embeddings || 0, // For StudentsPage
-        enrolled_at: s.user?.createdAt, // For StudentsPage
-        is_active: s.isEnrolled, // For StudentsPage
+        photo_count: s._count?.embeddings || 0,
+        enrolled_at: s.user?.createdAt,
+        is_active: s.isEnrolled,
         className: s.class?.name || 'Unassigned',
         classId: s.classId || '',
         semesterNumber: s.class?.academicSem?.number || null,

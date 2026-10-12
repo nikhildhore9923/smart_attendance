@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 import { 
   CheckCircle2, Camera, User, RefreshCw, AlertCircle, Search, 
   Trash2, UserPlus, Filter, ShieldAlert, X, ChevronRight 
@@ -11,6 +12,41 @@ import api, {
 } from '../lib/api'
 
 export default function EnrollPage() {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+
+  if (user && user.role !== 'ADMIN') {
+    return (
+      <div className="page-container" style={{ padding: '60px 20px', display: 'flex', justifyContent: 'center' }}>
+        <div style={{
+          maxWidth: '600px',
+          width: '100%',
+          textAlign: 'center',
+          background: 'var(--surface)',
+          padding: '40px 32px',
+          borderRadius: '16px',
+          border: '1px solid var(--border)',
+          boxShadow: '0 8px 30px rgba(0,0,0,0.1)'
+        }}>
+          <ShieldAlert size={56} color="var(--warning)" style={{ margin: '0 auto 16px' }} />
+          <h2 style={{ fontSize: '22px', fontWeight: 700, marginBottom: '12px' }}>Admin-Only Feature</h2>
+          <p style={{ fontSize: '14px', color: 'var(--muted)', lineHeight: '1.6', marginBottom: '24px' }}>
+            Student biometric enrollment and face registration are restricted to <strong>Administrators</strong>.
+            <br /><br />
+            As <strong>Faculty</strong>, you can conduct live attendance sessions for your allocated courses and view attendance reports.
+          </p>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+            <button onClick={() => navigate('/students')} className="btn btn-primary">
+              View My Students
+            </button>
+            <button onClick={() => navigate('/live')} className="btn btn-secondary">
+              Go to Live Recognition
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
   const [students, setStudents] = useState([])
   const [classes, setClasses] = useState([])
   const [loading, setLoading] = useState(false)
@@ -30,7 +66,6 @@ export default function EnrollPage() {
 
   // Camera & Mode State
   const location = useLocation()
-  const navigate = useNavigate()
   const [mode, setMode] = useState(new URLSearchParams(location.search).get('mode') === 'create' ? 'CREATE' : 'SELECT')
   const [newStudent, setNewStudent] = useState({ 
     firstName: '', lastName: '', email: '', rollNumber: '', classId: '', password: 'Password123!' 

@@ -4,11 +4,13 @@ import { Camera, RefreshCw, CheckCircle, XCircle, AlertTriangle, Users, Play, Sq
 import { getSubjects, startSession, getActiveSession, endSession, deleteSession, recognizeAttendance } from '../lib/api'
 import { getSocket, disconnectSocket } from '../utils/socket'
 import { useAuth } from '../context/AuthContext'
+import { useSubject } from '../context/SubjectContext'
 import toast from 'react-hot-toast'
 import ConfirmModal from '../components/ConfirmModal'
 
 export default function LivePage() {
   const { user } = useAuth()
+  const { subject: selectedSubject, setSubject: setSelectedSubject, subjects } = useSubject()
 
   if (user && user.role !== 'FACULTY') {
     return (
@@ -43,8 +45,6 @@ export default function LivePage() {
     );
   }
 
-  const [subjects, setSubjects] = useState([])
-  const [selectedSubject, setSelectedSubject] = useState('')
   const [session, setSession] = useState(null)
   const [markedStudents, setMarkedStudents] = useState([])
   
@@ -73,6 +73,7 @@ export default function LivePage() {
         if (prev.some((r) => r.student?.id === data.student.id || r.studentId === data.student.id)) return prev;
         
         toast.success(`${data.student.firstName} ${data.student.lastName} marked present!`, {
+          id: 'marked-' + data.student.id,
           style: { background: 'var(--success)', color: '#fff' }
         });
         
@@ -90,7 +91,6 @@ export default function LivePage() {
   }, []);
 
   useEffect(() => {
-    fetchSubjects()
     startCamera()
     return () => {
       stopCamera()
@@ -133,16 +133,6 @@ export default function LivePage() {
       if (autoScanRef.current) clearInterval(autoScanRef.current)
     }
   }, [autoScan, session, processing])
-
-  const fetchSubjects = async () => {
-    try {
-      const res = await getSubjects()
-      setSubjects(res.data)
-      if (res.data.length > 0) setSelectedSubject(res.data[0].id)
-    } catch (err) {
-      toast.error('Failed to fetch subjects')
-    }
-  }
 
   const checkActiveSession = async (subjId) => {
     try {
@@ -263,15 +253,31 @@ export default function LivePage() {
       if (res.data.marked && res.data.marked.length > 0) {
         res.data.marked.forEach(st => {
           toast.success(`Marked ${st.firstName} ${st.lastName} present!`, {
+            id: 'marked-' + st.id,
             style: { background: 'var(--success)', color: '#fff' }
           })
         })
         checkActiveSession(selectedSubject)
       } else if (res.data.status === 'MARKED_PRESENT') {
         toast.success(`Marked ${res.data.student.firstName} ${res.data.student.lastName} present!`, {
+          id: 'marked-' + res.data.student.id,
           style: { background: 'var(--success)', color: '#fff' }
         })
         checkActiveSession(selectedSubject)
+      } else if (res.data.status === 'WRONG_CLASS') {
+        toast.error(res.data.message || 'Wrong division detected', {
+          id: 'wrong-class-' + (res.data.student?.id || 'err')
+        })
+      }
+
+      if (res.data.faces) {
+        res.data.faces.forEach(f => {
+          if (f.status === 'WRONG_CLASS') {
+            toast.error(f.message || 'Wrong division detected', {
+              id: 'wrong-class-' + (f.student?.id || 'err')
+            })
+          }
+        })
       }
 
     } catch (err) {
@@ -433,23 +439,29 @@ export default function LivePage() {
                 <div style={{ 
                   background: result.status === 'MARKED_PRESENT' ? 'var(--surface-success)' : 
                               result.status === 'ALREADY_MARKED' ? 'var(--surface-warning)' : 
+                              result.status === 'WRONG_CLASS' ? 'rgba(239, 68, 68, 0.12)' :
                               !result.recognized ? 'var(--surface-error)' : 'var(--surface-info)', 
                   border: `1px solid ${result.status === 'MARKED_PRESENT' ? 'var(--success)' : 
                                       result.status === 'ALREADY_MARKED' ? 'var(--warning)' : 
+                                      result.status === 'WRONG_CLASS' ? 'var(--danger)' :
                                       !result.recognized ? 'var(--danger)' : 'var(--primary)'}`, 
                   padding: '12px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '12px' 
                 }}>
                   {result.status === 'MARKED_PRESENT' ? <CheckCircle size={24} color="var(--success)"/> : 
                    result.status === 'ALREADY_MARKED' ? <CheckCircle size={24} color="var(--warning)"/> : 
+                   result.status === 'WRONG_CLASS' ? <AlertTriangle size={24} color="var(--danger)"/> :
                    !result.recognized ? <XCircle size={24} color="var(--danger)"/> : 
                    <RefreshCw className="spinner" size={24} color="var(--primary)"/>}
                   <div>
-                    <p style={{ fontWeight: 'bold', fontSize: '16px', color: 'var(--text)' }}>
-                      {result.student ? `${result.student.firstName} ${result.student.lastName}` : result.message || 'Unknown Face'}
+                    <p style={{ fontWeight: 'bold', fontSize: '16px', color: result.status === 'WRONG_CLASS' ? 'var(--danger)' : 'var(--text)' }}>
+                      {result.status === 'WRONG_CLASS' 
+                        ? `Wrong Division: ${result.student ? `${result.student.firstName} ${result.student.lastName}` : 'Student'}`
+                        : result.student ? `${result.student.firstName} ${result.student.lastName}` : result.message || 'Unknown Face'}
                     </p>
-                    <p style={{ fontSize: '13px', color: 'var(--muted)' }}>
+                    <p style={{ fontSize: '13px', color: result.status === 'WRONG_CLASS' ? 'var(--danger)' : 'var(--muted)' }}>
                       {result.status === 'MARKED_PRESENT' ? 'Marked Present!' : 
                        result.status === 'ALREADY_MARKED' ? 'Already recorded' : 
+                       result.status === 'WRONG_CLASS' ? result.message :
                        !result.recognized ? (result.message || 'Face not recognized') : 
                        result.message || 'Confirming...'}
                       {result.similarity ? ` • ${(result.similarity * 100).toFixed(1)}% match` : ''}
@@ -459,18 +471,32 @@ export default function LivePage() {
               )}
 
               {result && result.faces && result.faces.map((f, i) => (
-                <div key={i} style={{ background: f.status === 'NEWLY_MARKED' ? 'var(--surface-success)' : f.status === 'ALREADY_MARKED' ? 'var(--surface-warning)' : !f.recognized ? 'var(--surface-error)' : 'var(--surface-info)', border: `1px solid ${f.status === 'NEWLY_MARKED' ? 'var(--success)' : f.status === 'ALREADY_MARKED' ? 'var(--warning)' : !f.recognized ? 'var(--danger)' : 'var(--primary)'}`, padding: '12px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div key={i} style={{ 
+                  background: f.status === 'NEWLY_MARKED' ? 'var(--surface-success)' : 
+                              f.status === 'ALREADY_MARKED' ? 'var(--surface-warning)' : 
+                              f.status === 'WRONG_CLASS' ? 'rgba(239, 68, 68, 0.12)' :
+                              !f.recognized ? 'var(--surface-error)' : 'var(--surface-info)', 
+                  border: `1px solid ${f.status === 'NEWLY_MARKED' ? 'var(--success)' : 
+                                      f.status === 'ALREADY_MARKED' ? 'var(--warning)' : 
+                                      f.status === 'WRONG_CLASS' ? 'var(--danger)' :
+                                      !f.recognized ? 'var(--danger)' : 'var(--primary)'}`, 
+                  padding: '12px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '12px' 
+                }}>
                   {f.status === 'NEWLY_MARKED' ? <CheckCircle size={24} color="var(--success)"/> : 
                    f.status === 'ALREADY_MARKED' ? <CheckCircle size={24} color="var(--warning)"/> : 
+                   f.status === 'WRONG_CLASS' ? <AlertTriangle size={24} color="var(--danger)"/> :
                    !f.recognized ? <XCircle size={24} color="var(--danger)"/> : 
                    <RefreshCw className="spinner" size={24} color="var(--primary)"/>}
                   <div>
-                    <p style={{ fontWeight: 'bold', fontSize: '16px', color: 'var(--text)' }}>
-                      {f.student ? `${f.student.firstName} ${f.student.lastName}` : 'Unknown Face'}
+                    <p style={{ fontWeight: 'bold', fontSize: '16px', color: f.status === 'WRONG_CLASS' ? 'var(--danger)' : 'var(--text)' }}>
+                      {f.status === 'WRONG_CLASS'
+                        ? `Wrong Division: ${f.student ? `${f.student.firstName} ${f.student.lastName}` : 'Student'}`
+                        : f.student ? `${f.student.firstName} ${f.student.lastName}` : 'Unknown Face'}
                     </p>
-                    <p style={{ fontSize: '13px', color: 'var(--muted)' }}>
+                    <p style={{ fontSize: '13px', color: f.status === 'WRONG_CLASS' ? 'var(--danger)' : 'var(--muted)' }}>
                       {f.status === 'NEWLY_MARKED' ? 'Marked Present!' : 
                        f.status === 'ALREADY_MARKED' ? 'Already recorded' : 
+                       f.status === 'WRONG_CLASS' ? f.message :
                        !f.recognized ? 'Not recognized or Liveness failed' : 
                        'Confirming...'}
                       {f.similarity ? ` • ${(f.similarity * 100).toFixed(1)}% match` : ''}

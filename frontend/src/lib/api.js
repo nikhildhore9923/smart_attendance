@@ -27,7 +27,7 @@ export const getMe = () => api.get('/auth/me')
 export const changePassword = (b) => api.post('/auth/change-password', b)
 
 // Students
-export const getStudents = () => api.get('/students')
+export const getStudents = (params) => api.get('/students', { params })
 export const createStudent = (data) => api.post('/students', data)
 export const getStudent = (id) => api.get(`/students/${id}`)
 export const deleteStudent = (r, dr=false) => api.delete(`/students/${r}`, { params: { hard: dr, delete_records: dr } })

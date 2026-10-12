@@ -116,12 +116,27 @@ const recognizeAttendance = async (req, res) => {
 
     if (!image) return res.status(400).json({ error: 'No image provided' });
 
-    const session = await prisma.attendanceSession.findUnique({ where: { id: sessionId } });
+    const session = await prisma.attendanceSession.findUnique({ 
+      where: { id: sessionId },
+      include: {
+        subject: {
+          include: {
+            classes: true
+          }
+        }
+      }
+    });
     if (!session) return res.status(404).json({ error: 'Session not found' });
     if (session.status !== 'ACTIVE') return res.status(400).json({ error: 'Attendance session is not active.' });
     if (req.user.role === 'FACULTY' && session.facultyId !== req.user.id) {
       return res.status(403).json({ error: 'You are only authorized to mark attendance for your own sessions.' });
     }
+
+    const sessionClasses = session.subject?.classes || [];
+    const allowedClassIds = sessionClasses.map(c => c.id);
+    const sessionClassNames = sessionClasses.length > 0 
+      ? sessionClasses.map(c => c.name).join(', ') 
+      : 'All Divisions';
 
     if (multiFace) {
       const result = await recognizeMultipleStudentsFromImage(image);
@@ -144,6 +159,15 @@ const recognizeAttendance = async (req, res) => {
          }
          
          const studentId = face.student.id;
+
+         // Division / Class enforcement: reject students not in this session's class
+         if (allowedClassIds.length > 0 && (!face.student.classId || !allowedClassIds.includes(face.student.classId))) {
+             face.status = 'WRONG_CLASS';
+             face.message = `Wrong Division: ${face.student.firstName} is in ${face.student.className || 'another division'}, not ${sessionClassNames}`;
+             recognizedFaces.push(face);
+             continue;
+         }
+
          recognizedFaces.push(face);
 
          const existingRecord = await prisma.attendanceRecord.findUnique({
@@ -200,6 +224,18 @@ const recognizeAttendance = async (req, res) => {
     }
 
     const studentId = result.student.id;
+
+    // Division / Class enforcement: reject students not in this session's class
+    if (allowedClassIds.length > 0 && (!result.student.classId || !allowedClassIds.includes(result.student.classId))) {
+      temporalState.delete(sessionId);
+      return res.json({
+        recognized: true,
+        student: result.student,
+        similarity: result.similarity,
+        status: 'WRONG_CLASS',
+        message: `Division Mismatch: ${result.student.firstName} is in ${result.student.className || 'another division'}, not ${sessionClassNames}`
+      });
+    }
 
     // 4. Check Duplicate Prevention
     const existingRecord = await prisma.attendanceRecord.findUnique({
