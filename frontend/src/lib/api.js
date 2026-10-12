@@ -66,11 +66,12 @@ export const exportCSV = (params) => api.get('/attendance/export/csv', { params,
 export const exportPDF = (params) => api.get('/attendance/export/pdf', { params, responseType: 'blob' })
 
 // Map legacy log endpoint to new history endpoint
-export const getFullLog = async (params) => {
+export const getFullLog = async (params = {}) => {
   const query = {};
   if (params.date_from) query.fromDate = params.date_from;
   if (params.date_to) query.toDate = params.date_to;
   if (params.subject && params.subject !== 'All') query.subjectId = params.subject;
+  if (params.classId && params.classId !== 'All') query.classId = params.classId;
   
   const res = await api.get('/attendance/history', { params: query });
   
@@ -79,29 +80,50 @@ export const getFullLog = async (params) => {
   if (params.subject && params.subject !== 'All') {
     filtered = filtered.filter(r => r.subjectId === params.subject || r.subjectName === params.subject);
   }
+  if (params.classId && params.classId !== 'All') {
+    filtered = filtered.filter(r => r.classId === params.classId || r.className?.toLowerCase().includes(params.classId.toLowerCase()));
+  }
   if (params.search) {
     const s = params.search.toLowerCase();
-    filtered = filtered.filter(r => r.studentName?.toLowerCase().includes(s) || r.rollNumber?.toLowerCase().includes(s));
+    filtered = filtered.filter(r => 
+      r.studentName?.toLowerCase().includes(s) || 
+      r.rollNumber?.toLowerCase().includes(s) ||
+      r.email?.toLowerCase().includes(s)
+    );
   }
   
-  // Pagination
+  const formatted = filtered.map(r => ({
+    id: r.id,
+    sessionId: r.sessionId,
+    studentId: r.studentId,
+    name: r.studentName,
+    roll_no: r.rollNumber,
+    email: r.email,
+    date: r.date,
+    time: r.time,
+    confidence: r.similarityScore ? (r.similarityScore <= 1 ? r.similarityScore * 100 : r.similarityScore) : 0,
+    subject: r.subjectName,
+    subjectId: r.subjectId,
+    subjectCode: r.subjectCode,
+    facultyName: r.facultyName,
+    sessionStartTime: r.sessionStartTime,
+    sessionStatus: r.sessionStatus,
+    class: r.className,
+    classId: r.classId,
+    status: r.status,
+    method: r.method
+  }));
+
+  // Pagination for chronological view
   const page = params.page || 1;
   const size = params.page_size || 25;
-  const paginated = filtered.slice((page - 1) * size, page * size);
+  const paginated = formatted.slice((page - 1) * size, page * size);
   
   return {
     data: {
-      total: filtered.length,
-      data: paginated.map(r => ({
-        name: r.studentName,
-        roll_no: r.rollNumber,
-        date: r.date,
-        time: r.time,
-        confidence: r.similarityScore ? r.similarityScore * 100 : 0,
-        subject: r.subjectName,
-        class: r.className,
-        status: r.status
-      }))
+      total: formatted.length,
+      data: paginated,
+      all: formatted
     }
   };
 };
