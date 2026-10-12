@@ -145,7 +145,7 @@ exports.getSubjects = async (req, res) => {
     where,
     include: {
       academicSem: { include: { academicYear: true, program: true } },
-      classes: true,
+      classes: { include: { academicSem: true } },
       faculties: {
         include: {
           user: { select: { id: true, firstName: true, lastName: true, email: true } },

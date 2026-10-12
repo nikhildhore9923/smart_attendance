@@ -50,7 +50,16 @@ async function recognizeStudentFromImage(base64Image) {
 
   // 5. Fetch Enrollments
   const enrolledEmbeddings = await prisma.faceEmbedding.findMany({
-    include: { student: { include: { user: true, class: true } } }
+    include: {
+      student: {
+        include: {
+          user: true,
+          class: {
+            include: { academicSem: true }
+          }
+        }
+      }
+    }
   });
 
   if (enrolledEmbeddings.length === 0) {
@@ -65,6 +74,10 @@ async function recognizeStudentFromImage(base64Image) {
     const studentId = record.studentId;
 
     if (!studentScores.has(studentId) || sim > studentScores.get(studentId).similarity) {
+      const cls = record.student.class;
+      const semNumber = cls?.academicSem?.number;
+      const displayClassName = cls ? (semNumber ? `${cls.name} (Sem ${semNumber})` : cls.name) : 'Unassigned';
+
       studentScores.set(studentId, {
         similarity: sim,
         student: {
@@ -74,7 +87,9 @@ async function recognizeStudentFromImage(base64Image) {
           lastName: record.student.user.lastName,
           email: record.student.user.email,
           classId: record.student.classId,
-          className: record.student.class?.name || null
+          className: displayClassName,
+          rawClassName: cls?.name || 'Unassigned',
+          semesterNumber: semNumber || null
         }
       });
     }
@@ -118,7 +133,16 @@ async function recognizeMultipleStudentsFromImage(base64Image) {
   if (analysis.status === 'NO_FACE' || analysis.num_faces === 0) return { error: 'No face detected in the image.' };
 
   const enrolledEmbeddings = await prisma.faceEmbedding.findMany({
-    include: { student: { include: { user: true, class: true } } }
+    include: {
+      student: {
+        include: {
+          user: true,
+          class: {
+            include: { academicSem: true }
+          }
+        }
+      }
+    }
   });
 
   if (enrolledEmbeddings.length === 0) {
@@ -140,6 +164,10 @@ async function recognizeMultipleStudentsFromImage(base64Image) {
       const dbEmbedding = record.embedding;
       const sim = cosineSimilarity(query, dbEmbedding);
       if (!studentScores[record.studentId] || sim > studentScores[record.studentId].similarity) {
+        const cls = record.student.class;
+        const semNumber = cls?.academicSem?.number;
+        const displayClassName = cls ? (semNumber ? `${cls.name} (Sem ${semNumber})` : cls.name) : 'Unassigned';
+
         studentScores[record.studentId] = { similarity: sim, student: {
           id: record.student.id,
           rollNumber: record.student.rollNumber,
@@ -147,7 +175,9 @@ async function recognizeMultipleStudentsFromImage(base64Image) {
           lastName: record.student.user?.lastName || '',
           email: record.student.user?.email || '',
           classId: record.student.classId,
-          className: record.student.class?.name || null
+          className: displayClassName,
+          rawClassName: cls?.name || 'Unassigned',
+          semesterNumber: semNumber || null
         } };
       }
     }

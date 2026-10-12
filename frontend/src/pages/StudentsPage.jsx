@@ -615,12 +615,23 @@ export default function StudentsPage() {
                 <select className="input" value={editing.classId} onChange={e => setEditing({...editing, classId: e.target.value})}>
                   <option value="">-- No Division Assigned --</option>
                   {classes
-                    .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-                    .map(c => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} {c.academicSem ? `(Sem ${c.academicSem.number})` : ''}
-                      </option>
-                    ))}
+                    .slice()
+                    .sort((a, b) => {
+                      const semA = a.academicSem?.number ?? a.semester ?? 0;
+                      const semB = b.academicSem?.number ?? b.semester ?? 0;
+                      if (semA !== semB) return semA - semB;
+                      return (a.name || '').localeCompare(b.name || '');
+                    })
+                    .map(c => {
+                      const semNum = c.academicSem?.number || c.semester;
+                      const semStr = semNum ? `Semester ${semNum}` : '';
+                      const progStr = c.academicSem?.program?.name ? `${c.academicSem.program.name} • ` : '';
+                      return (
+                        <option key={c.id} value={c.id}>
+                          {c.name} {semStr ? `(${progStr}${semStr})` : ''}
+                        </option>
+                      );
+                    })}
                 </select>
               </div>
 

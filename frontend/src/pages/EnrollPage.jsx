@@ -491,12 +491,23 @@ export default function EnrollPage() {
                     >
                       <option value="">-- Select Division --</option>
                       {classes
-                        .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-                        .map(c => (
-                          <option key={c.id} value={c.id}>
-                            {c.name} {c.academicSem ? `(Semester ${c.academicSem.number})` : ''}
-                          </option>
-                        ))}
+                        .slice()
+                        .sort((a, b) => {
+                          const semA = a.academicSem?.number ?? a.semester ?? 0;
+                          const semB = b.academicSem?.number ?? b.semester ?? 0;
+                          if (semA !== semB) return semA - semB;
+                          return (a.name || '').localeCompare(b.name || '');
+                        })
+                        .map(c => {
+                          const semNum = c.academicSem?.number || c.semester;
+                          const semStr = semNum ? `Semester ${semNum}` : '';
+                          const progStr = c.academicSem?.program?.name ? `${c.academicSem.program.name} • ` : '';
+                          return (
+                            <option key={c.id} value={c.id}>
+                              {c.name} {semStr ? `(${progStr}${semStr})` : ''}
+                            </option>
+                          );
+                        })}
                     </select>
                   </div>
                 </div>

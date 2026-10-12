@@ -121,7 +121,9 @@ const recognizeAttendance = async (req, res) => {
       include: {
         subject: {
           include: {
-            classes: true
+            classes: {
+              include: { academicSem: true }
+            }
           }
         }
       }
@@ -135,8 +137,18 @@ const recognizeAttendance = async (req, res) => {
     const sessionClasses = session.subject?.classes || [];
     const allowedClassIds = sessionClasses.map(c => c.id);
     const sessionClassNames = sessionClasses.length > 0 
-      ? sessionClasses.map(c => c.name).join(', ') 
+      ? sessionClasses.map(c => c.academicSem ? `${c.name} (Sem ${c.academicSem.number})` : c.name).join(', ') 
       : 'All Divisions';
+
+    // Helper: checks if student belongs to this session's class/cohort
+    const isStudentAllowed = (st) => {
+      if (allowedClassIds.length === 0) return true;
+      if (!st.classId) return false;
+      if (allowedClassIds.includes(st.classId)) return true;
+      // Also match by exact class/division name to support students across semester transitions of the same cohort
+      const stName = (st.rawClassName || '').trim().toLowerCase();
+      return sessionClasses.some(c => c.name.trim().toLowerCase() === stName);
+    };
 
     if (multiFace) {
       const result = await recognizeMultipleStudentsFromImage(image);
@@ -161,9 +173,9 @@ const recognizeAttendance = async (req, res) => {
          const studentId = face.student.id;
 
          // Division / Class enforcement: reject students not in this session's class
-         if (allowedClassIds.length > 0 && (!face.student.classId || !allowedClassIds.includes(face.student.classId))) {
+         if (!isStudentAllowed(face.student)) {
              face.status = 'WRONG_CLASS';
-             face.message = `Wrong Division: ${face.student.firstName} is in ${face.student.className || 'another division'}, not ${sessionClassNames}`;
+             face.message = `Wrong Division / Semester: ${face.student.firstName} is in ${face.student.className || 'another division'}, not ${sessionClassNames}`;
              recognizedFaces.push(face);
              continue;
          }
@@ -226,14 +238,14 @@ const recognizeAttendance = async (req, res) => {
     const studentId = result.student.id;
 
     // Division / Class enforcement: reject students not in this session's class
-    if (allowedClassIds.length > 0 && (!result.student.classId || !allowedClassIds.includes(result.student.classId))) {
+    if (!isStudentAllowed(result.student)) {
       temporalState.delete(sessionId);
       return res.json({
         recognized: true,
         student: result.student,
         similarity: result.similarity,
         status: 'WRONG_CLASS',
-        message: `Division Mismatch: ${result.student.firstName} is in ${result.student.className || 'another division'}, not ${sessionClassNames}`
+        message: `Wrong Division / Semester: ${result.student.firstName} is in ${result.student.className || 'another division'}, not ${sessionClassNames}`
       });
     }
 

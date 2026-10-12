@@ -490,7 +490,7 @@ export default function LivePage() {
                   <div>
                     <p style={{ fontWeight: 'bold', fontSize: '16px', color: f.status === 'WRONG_CLASS' ? 'var(--danger)' : 'var(--text)' }}>
                       {f.status === 'WRONG_CLASS'
-                        ? `Wrong Division: ${f.student ? `${f.student.firstName} ${f.student.lastName}` : 'Student'}`
+                        ? `Wrong Division / Semester: ${f.student ? `${f.student.firstName} ${f.student.lastName}` : 'Student'}`
                         : f.student ? `${f.student.firstName} ${f.student.lastName}` : 'Unknown Face'}
                     </p>
                     <p style={{ fontSize: '13px', color: f.status === 'WRONG_CLASS' ? 'var(--danger)' : 'var(--muted)' }}>
