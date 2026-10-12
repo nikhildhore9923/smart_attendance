@@ -125,7 +125,7 @@ export default function LivePage() {
         if (!processing) {
           captureAndRecognize()
         }
-      }, 2500) // Capture every 2.5 seconds
+      }, 1000) // Capture every 1.0 second for fast scanning
     } else {
       if (autoScanRef.current) clearInterval(autoScanRef.current)
     }
@@ -260,9 +260,17 @@ export default function LivePage() {
       const res = await recognizeAttendance(session.id, base64Image)
       setResult(res.data)
       
-      if (res.data.status === 'MARKED_PRESENT') {
-        toast.success(`Marked ${res.data.student.firstName} present`)
-        // Refresh active session to get updated records list
+      if (res.data.marked && res.data.marked.length > 0) {
+        res.data.marked.forEach(st => {
+          toast.success(`Marked ${st.firstName} ${st.lastName} present!`, {
+            style: { background: 'var(--success)', color: '#fff' }
+          })
+        })
+        checkActiveSession(selectedSubject)
+      } else if (res.data.status === 'MARKED_PRESENT') {
+        toast.success(`Marked ${res.data.student.firstName} ${res.data.student.lastName} present!`, {
+          style: { background: 'var(--success)', color: '#fff' }
+        })
         checkActiveSession(selectedSubject)
       }
 
@@ -421,6 +429,35 @@ export default function LivePage() {
                 </div>
               )}
 
+              {result && !result.faces && (result.student || result.message) && (
+                <div style={{ 
+                  background: result.status === 'MARKED_PRESENT' ? 'var(--surface-success)' : 
+                              result.status === 'ALREADY_MARKED' ? 'var(--surface-warning)' : 
+                              !result.recognized ? 'var(--surface-error)' : 'var(--surface-info)', 
+                  border: `1px solid ${result.status === 'MARKED_PRESENT' ? 'var(--success)' : 
+                                      result.status === 'ALREADY_MARKED' ? 'var(--warning)' : 
+                                      !result.recognized ? 'var(--danger)' : 'var(--primary)'}`, 
+                  padding: '12px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '12px' 
+                }}>
+                  {result.status === 'MARKED_PRESENT' ? <CheckCircle size={24} color="var(--success)"/> : 
+                   result.status === 'ALREADY_MARKED' ? <CheckCircle size={24} color="var(--warning)"/> : 
+                   !result.recognized ? <XCircle size={24} color="var(--danger)"/> : 
+                   <RefreshCw className="spinner" size={24} color="var(--primary)"/>}
+                  <div>
+                    <p style={{ fontWeight: 'bold', fontSize: '16px', color: 'var(--text)' }}>
+                      {result.student ? `${result.student.firstName} ${result.student.lastName}` : result.message || 'Unknown Face'}
+                    </p>
+                    <p style={{ fontSize: '13px', color: 'var(--muted)' }}>
+                      {result.status === 'MARKED_PRESENT' ? 'Marked Present!' : 
+                       result.status === 'ALREADY_MARKED' ? 'Already recorded' : 
+                       !result.recognized ? (result.message || 'Face not recognized') : 
+                       result.message || 'Confirming...'}
+                      {result.similarity ? ` • ${(result.similarity * 100).toFixed(1)}% match` : ''}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {result && result.faces && result.faces.map((f, i) => (
                 <div key={i} style={{ background: f.status === 'NEWLY_MARKED' ? 'var(--surface-success)' : f.status === 'ALREADY_MARKED' ? 'var(--surface-warning)' : !f.recognized ? 'var(--surface-error)' : 'var(--surface-info)', border: `1px solid ${f.status === 'NEWLY_MARKED' ? 'var(--success)' : f.status === 'ALREADY_MARKED' ? 'var(--warning)' : !f.recognized ? 'var(--danger)' : 'var(--primary)'}`, padding: '12px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                   {f.status === 'NEWLY_MARKED' ? <CheckCircle size={24} color="var(--success)"/> : 
@@ -436,6 +473,7 @@ export default function LivePage() {
                        f.status === 'ALREADY_MARKED' ? 'Already recorded' : 
                        !f.recognized ? 'Not recognized or Liveness failed' : 
                        'Confirming...'}
+                      {f.similarity ? ` • ${(f.similarity * 100).toFixed(1)}% match` : ''}
                     </p>
                   </div>
                 </div>

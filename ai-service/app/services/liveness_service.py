@@ -48,12 +48,17 @@ class LivenessService:
                 self.model = True # Dummy flag for availability
             
             # Load dynamic threshold from the validation phase if available
-            if os.path.exists(self.metrics_path):
+            if os.getenv("LIVENESS_THRESHOLD"):
+                self.threshold = float(os.getenv("LIVENESS_THRESHOLD"))
+                print(f"[INFO] Using environment-configured threshold: {self.threshold}")
+            elif os.path.exists(self.metrics_path):
                 with open(self.metrics_path, 'r') as f:
                     metrics = json.load(f)
                     if 'optimal_threshold' in metrics:
                         self.threshold = metrics['optimal_threshold']
                         print(f"[INFO] Using validation-selected optimal threshold: {self.threshold}")
+            else:
+                self.threshold = 0.04
                         
             print(f"[SUCCESS] {self.model_type} Liveness model loaded from {self.model_path}")
         except Exception as e:

@@ -18,7 +18,7 @@
             "tp": 2302
         }
     },
-    "optimal_threshold": 0.1,
+    "optimal_threshold": 0.04,
     "threshold_optimal": {
         "accuracy": 0.6918776718184808,
         "precision": 0.5575276675715181,

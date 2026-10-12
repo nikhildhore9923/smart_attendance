@@ -2,7 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 const { recognizeStudentFromImage, recognizeMultipleStudentsFromImage } = require('../services/recognitionService');
 
 const prisma = new PrismaClient();
-const REQUIRED_CONFIRMATIONS = parseInt(process.env.ATTENDANCE_REQUIRED_CONFIRMATIONS) || 3;
+const REQUIRED_CONFIRMATIONS = parseInt(process.env.ATTENDANCE_REQUIRED_CONFIRMATIONS) || 2;
 
 // In-memory cache for temporal stability per session.
 // Key: sessionId -> { lastStudentId: string, count: number }
